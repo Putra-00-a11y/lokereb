@@ -3,10 +3,13 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
+
+app.use(cors()); // tambahin ini
 app.use('/uploads', express.static('uploads')); // akses file upload
 app.use('/data', express.static('data'));    
 
