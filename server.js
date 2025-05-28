@@ -9,7 +9,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 
-app.use(cors()); // tambahin ini
+app.use(cors({
+  origin: 'https://lokerdigital.vercel.app', // Ganti sesuai domain
+  methods: ['POST', 'GET'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use('/uploads', express.static('uploads')); // akses file upload
 app.use('/data', express.static('data'));    
 
