@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,8 +12,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type']
 }));
 
-app.use(express.json()); // parsing JSON body dari frontend
-app.use('/data', express.static('data')); // biar file json bisa diakses kalau mau
+app.use(express.json());
+
+const dataFolder = path.join(__dirname, 'data');
+const dataPath = path.join(dataFolder, 'pelamar.json');
+
+// Pastikan folder data ada
+if (!fs.existsSync(dataFolder)) {
+  fs.mkdirSync(dataFolder);
+}
+
+app.use('/data', express.static(dataFolder));
 
 app.post('/api/submit-loker', (req, res) => {
   try {
@@ -21,18 +31,21 @@ app.post('/api/submit-loker', (req, res) => {
       email, agama, pendidikan, alamat
     } = req.body;
 
-    // Validasi data (wajib semua)
     if (!namaLengkap || !ttl || !jenisKelamin || !noHP || !noDarurat ||
         !email || !agama || !pendidikan || !alamat) {
       return res.status(400).json({ message: 'Data tidak lengkap!' });
     }
 
-    const dataPath = './data/pelamar.json';
     let pelamarList = [];
 
-    if (fs.existsSync(dataPath)) {
-      const raw = fs.readFileSync(dataPath);
-      pelamarList = JSON.parse(raw);
+    try {
+      if (fs.existsSync(dataPath)) {
+        const raw = fs.readFileSync(dataPath);
+        pelamarList = JSON.parse(raw);
+      }
+    } catch (err) {
+      console.warn('Gagal parse JSON, pakai array kosong.');
+      pelamarList = [];
     }
 
     pelamarList.push({
