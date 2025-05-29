@@ -1,75 +1,64 @@
 const express = require('express');
 const fs = require('fs');
-const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const dataPath = path.join(__dirname, 'data', 'pelamar.json');
 
-app.use(cors({
-  origin: 'https://lokerdigital.vercel.app',
-  methods: ['POST', 'GET'],
-  allowedHeaders: ['Content-Type']
-}));
-
+// Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const dataFolder = path.join(__dirname, 'data');
-const dataPath = path.join(dataFolder, 'pelamar.json');
+// Handle form-data (dari FormData di frontend)
+const upload = multer();
 
-// Pastikan folder data ada
-if (!fs.existsSync(dataFolder)) {
-  fs.mkdirSync(dataFolder);
-}
+// Endpoint POST: Simpan data ke JSON
+app.post('/api/submit-loker', upload.none(), (req, res) => {
+  const formData = req.body;
 
-app.use('/data', express.static(dataFolder));
-
-app.post('/api/submit-loker', (req, res) => {
-  try {
-    const {
-      namaLengkap, ttl, jenisKelamin, noHP, noDarurat,
-      email, agama, pendidikan, alamat
-    } = req.body;
-
-    if (!namaLengkap || !ttl || !jenisKelamin || !noHP || !noDarurat ||
-        !email || !agama || !pendidikan || !alamat) {
-      return res.status(400).json({ message: 'Data tidak lengkap!' });
-    }
-
-    let pelamarList = [];
-
+  // Baca data lama
+  let data = [];
+  if (fs.existsSync(dataPath)) {
+    const fileData = fs.readFileSync(dataPath, 'utf-8');
     try {
-      if (fs.existsSync(dataPath)) {
-        const raw = fs.readFileSync(dataPath);
-        pelamarList = JSON.parse(raw);
-      }
+      data = JSON.parse(fileData);
     } catch (err) {
-      console.warn('Gagal parse JSON, pakai array kosong.');
-      pelamarList = [];
+      console.error('Error parsing JSON:', err);
     }
+  }
 
-    pelamarList.push({
-      namaLengkap,
-      ttl,
-      jenisKelamin,
-      noHP,
-      noDarurat,
-      email,
-      agama,
-      pendidikan,
-      alamat,
-      tanggalDaftar: new Date()
-    });
+  // Tambahkan data baru
+  data.push({
+    id: Date.now(),
+    ...formData,
+  });
 
-    fs.writeFileSync(dataPath, JSON.stringify(pelamarList, null, 2));
+  // Tulis ke file JSON
+  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), 'utf-8');
 
-    res.json({ message: 'Data berhasil disimpan!' });
+  res.status(200).json({ message: 'Data berhasil disimpan!' });
+});
+
+// Endpoint GET: Tampilkan semua data
+app.get('/pelamar', (req, res) => {
+  if (!fs.existsSync(dataPath)) {
+    return res.json([]);
+  }
+
+  const raw = fs.readFileSync(dataPath, 'utf-8');
+  try {
+    const data = JSON.parse(raw);
+    res.json(data);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error!' });
+    res.status(500).json({ error: 'Gagal membaca data pelamar.' });
   }
 });
 
+// Jalankan server
 app.listen(PORT, () => {
-  console.log(`Server nyala di http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
